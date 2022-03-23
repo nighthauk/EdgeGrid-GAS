@@ -16,6 +16,7 @@ class EdgeGrid
 
         if (!this.obj.file)
         {
+            // Only support for edgerc is complete, dialog coming soon.
             throw new Error('A filename was not specified. This is typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory');            
         }
         else
@@ -457,6 +458,10 @@ class EdgeGrid
 
 function init(obj)
 {
+    if (!obj.file && !obj.type)
+    {
+        throw new Error('Neither a filename nor dialog type was specified. The file is typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory. If you would like to support auth via input dialog, please init with type: dialog.');
+    }
 
     return new EdgeGrid(obj);
 
