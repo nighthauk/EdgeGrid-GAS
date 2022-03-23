@@ -1,0 +1,18 @@
+{
+  "name": "edgegrid-gas",
+  "version": "1.0.0",
+  "description": "EdgeGrid class for GAS",
+  "main": ".src/EdgeGrid.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nighthauk/EdgeGrid-GAS.git"
+  },
+  "author": "Ryan Hauk",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@types/google-apps-script": "^1.0.45"
+  }
+}
