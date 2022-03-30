@@ -84,7 +84,7 @@ class EdgeGrid {
     /**
      * Builds the full config object
      * @param {array} configs   The array of our edgerc details
-     * @returns - Fully validated config
+     * @returns - Validated config object
      */
     buildObj(configs) {
         const result = {};
@@ -120,6 +120,11 @@ class EdgeGrid {
         return this.validatedConfig(result);
     }
 
+    /**
+     * Handles validation of the config
+     * @param {object} config   
+     * @returns Validated config
+     */
     validatedConfig(config) {
         if (
             !(
@@ -132,6 +137,7 @@ class EdgeGrid {
             let errorMessage = '';
             const tokens = ['client_token', 'client_secret', 'access_token', 'host'];
 
+            // check for any missing credentials and build error string
             tokens.forEach(function (token) {
                 if (!config[token]) {
                     errorMessage += `Missing: ${token} `;
@@ -141,15 +147,23 @@ class EdgeGrid {
             throw new Error(`Invalid Configuration! ${errorMessage}`);
         }
 
+        // ensure we have protocol
         if (config.host.indexOf('https://') > -1) {
             return config;
         }
 
+        // add if not
         config.host = 'https://' + config.host;
         return config;
     }
 
+    /**
+     * Exposed auth method for signing the request
+     * @param {object} req  
+     * @returns - Full class object
+     */
     auth(req) {
+        // handle either a regular or deep merge of passed args and defaults
         let merge = (...args) => {
             // variables
             let target = {};
@@ -179,6 +193,7 @@ class EdgeGrid {
             return target;
         };
 
+        // config defaults, merge should handle dupes
         let defaults = {
             baseURL: this.config.host,
             url: req.path,
@@ -193,12 +208,12 @@ class EdgeGrid {
 
         // convert body object to properly formatted string
         if (fullReq.body) {
-            fullReq.body =
-                typeof fullReq.body == 'object'
-                    ? JSON.stringify(fullReq.body)
-                    : fullReq.body;
+            fullReq.body = typeof fullReq.body == 'object'
+                ? JSON.stringify(fullReq.body)
+                : fullReq.body;
         }
 
+        // generate all auth items given req and assign to class obj
         this.request = this.generateAuth(
             fullReq,
             this.config.client_token,
@@ -210,6 +225,18 @@ class EdgeGrid {
         return this;
     }
 
+    /**
+     * 
+     * @param {object} request  The full request object, unsigned
+     * @param {string} clientToken  The edgerc client_token
+     * @param {string} clientSecret The edgerc client_secret
+     * @param {string} accessToken  The edgerc access_token
+     * @param {string} host     The edgerc host
+     * @param {string} maxBody The edgerc maxBody
+     * @param {string} guid     Client UUID or create new
+     * @param {string} timestamp    Timestamp of auth signing or create new
+     * @returns - The request with generated url and generated auth header
+     */
     generateAuth(
         request,
         clientToken,
