@@ -4,26 +4,36 @@ eval(
     ).getContentText()
 );
 
+/**
+ * Class to create a new EdgeGrid auth token within GAS
+ */
 class EdgeGrid {
+    /**
+     * Class constructor
+     * @param {object} obj  Init object which carries items needed to create and sign the auth token
+     */
     constructor(obj) {
         this.obj = obj;
         this.edgerc();
     }
 
+    /**
+     * Called from constructor, builds the details needed for our token
+     */
     edgerc() {
-        if (!this.obj.file) {
-            // Only support for edgerc is complete, dialog coming soon.
-            throw new Error(
-                'A filename was not specified. This is typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory'
-            );
-        } else {
+        let ui = SpreadsheetApp.getUi();
+
+        // initialized with edgerc file from Google Drive
+        if (this.obj.file) {
             const confSection = this.obj.section || 'default';
             const files = DriveApp.getFilesByName(this.obj.file);
 
+            // get file contents, and specifically the section data
             while (files.hasNext()) {
                 let edgerc = files.next();
                 let raw = edgerc.getBlob().getDataAsString().split('\n');
 
+                // get the edgerc section from raw file
                 let confData = this.getSection(raw, confSection);
 
                 if (!confData.length) {
@@ -32,19 +42,25 @@ class EdgeGrid {
                     );
                 }
 
+                // build the full config object
                 this.config = this.buildObj(confData);
             }
+        } else {
+            ui.alert(JSON.stringify(this.obj));
         }
     }
 
-    runsies(values) {
-        Logger.log(values);
-    }
-
+    /**
+     * Gets edgerc section details to create auth
+     * @param {string} lines    The full edgerc contents
+     * @param {string} sectionName  Which section to grab, default is default
+     * @returns {array} - Built array of edgerc details
+     */
     getSection(lines, sectionName) {
         const match = /^\s*\[(.*)]/;
         const section = [];
 
+        // attempt to match the desired section
         lines.some((line, i) => {
             const lineMatch = line.match(match);
             const isMatch = lineMatch !== null && lineMatch[1] === sectionName;
@@ -54,6 +70,7 @@ class EdgeGrid {
                 lines.slice(i + 1, lines.length).some((line) => {
                     const isMatch = line.match(match) !== null;
                     if (!isMatch) {
+                        // push to section array
                         section.push(line);
                     }
                     return isMatch;
@@ -64,6 +81,11 @@ class EdgeGrid {
         return section;
     }
 
+    /**
+     * Builds the full config object
+     * @param {array} configs   The array of our edgerc details
+     * @returns - Fully validated config
+     */
     buildObj(configs) {
         const result = {};
         let index, key, val, parsedValue, isComment;
@@ -112,7 +134,7 @@ class EdgeGrid {
 
             tokens.forEach(function (token) {
                 if (!config[token]) {
-                    errorMessage += `Missing: ${token}`;
+                    errorMessage += `Missing: ${token} `;
                 }
             });
 
@@ -423,7 +445,7 @@ class EdgeGrid {
 }
 
 function init(obj) {
-    if (!obj.file && !obj.type) {
+    if (!obj.file) {
         throw new Error(
             'Neither a filename nor dialog type was specified. The file is typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory. If you would like to support auth via input dialog, please init with type: dialog.'
         );
