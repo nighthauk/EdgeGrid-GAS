@@ -226,7 +226,7 @@ class EdgeGrid {
     }
 
     /**
-     * 
+     * Generate the full auth header
      * @param {object} request  The full request object, unsigned
      * @param {string} clientToken  The edgerc client_token
      * @param {string} clientSecret The edgerc client_secret
@@ -251,6 +251,7 @@ class EdgeGrid {
         guid = guid || Utilities.getUuid();
         timestamp = timestamp || this.createTimestamp();
 
+        // make the req url and auth header with passed params/defaults
         request.url = this.makeUrl(host, request.path, request.qs);
         request.headers.Authorization = this.makeAuthHeader(
             request,
@@ -265,10 +266,19 @@ class EdgeGrid {
         return request;
     }
 
+    /**
+     * Utility function to pad start of a string, in this case to build our timestamp
+     * @param {number} number   Number from Date object, NaN if obj is not valid date
+     * @returns - Padded string
+     */
     twoDigitNumberPad(number) {
         return String(number).padStart(2, '0');
     }
 
+    /**
+     * Creates the timestamp used in our edgegrid auth header
+     * @returns - Edgegrid ready timestamp string
+     */
     createTimestamp() {
         const date = new Date(Date.now());
 
@@ -286,21 +296,41 @@ class EdgeGrid {
         );
     }
 
+    /**
+     * 
+     * @param {string} host  Host from request obj
+     * @param {string} path  Path string from request obj 
+     * @param {object} qsObj Query String object when creating auth
+     * @returns - Built URI with query params
+     */
     makeUrl(host, path, qsObj) {
         let queryString = '';
 
         if (qsObj) {
+            // itterate over qs object and build into a string for use in URI
             queryString = Object.keys(qsObj)
                 .map((key) => key + '=' + encodeURIComponent(qsObj[key]))
                 .join('&');
         }
 
+        // check to see if query string existed when initializing, if not make sure ? is included
         path = !path.includes('?') && qsObj ? `${path}?${queryString}` : path;
         const parsed = new URI(path, host);
 
         return parsed;
     }
 
+    /**
+     * Makes our full auth header for use in the actual API call
+     * @param {object} request  Our full request object
+     * @param {string} clientToken  Client token from creds
+     * @param {string} accessToken  Access token from creds
+     * @param {string} clientSecret  Client secret from creds
+     * @param {string} timestamp    Our generated timestamp
+     * @param {string} nonce   Client UUID 
+     * @param {string} maxBody  Max body size from edgeer, if set
+     * @returns - String of our signed auth header
+     */
     makeAuthHeader(
         request,
         clientToken,
@@ -322,11 +352,15 @@ class EdgeGrid {
             signedAuthHeader,
             key;
 
+        // build string of our key value pairs
         for (key in keyValuePairs) {
             joinedPairs += key + '=' + keyValuePairs[key] + ';';
         }
 
+        // preceed our joined pairs with HMAC SHA type
         authHeader = `EG1-HMAC-SHA256 ${joinedPairs}`;
+
+        // sign our auth header
         signedAuthHeader =
             authHeader +
             'signature=' +
