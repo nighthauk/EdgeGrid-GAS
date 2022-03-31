@@ -194,6 +194,8 @@ class EdgeGrid {
         };
 
         // config defaults, merge should handle dupes
+        // NOTE: GAS doesn't support overwriting User-Agent, so don't waste your time
+        // GAS UA: Mozilla/5.0 (compatible; Google-Apps-Script; beanserver; +https://script.google.com; id: {id})
         let defaults = {
             baseURL: this.config.host,
             url: req.path,
@@ -247,6 +249,7 @@ class EdgeGrid {
         guid,
         timestamp
     ) {
+        // set items that may not have been passed
         maxBody = maxBody || 131072;
         guid = guid || Utilities.getUuid();
         timestamp = timestamp || this.createTimestamp();
@@ -369,6 +372,15 @@ class EdgeGrid {
         return signedAuthHeader;
     }
 
+    /**
+     * Signs the full request 
+     * @param {object} request  The full requrst object
+     * @param {string} timestamp  Timestamp
+     * @param {string} clientSecret  Client secred from creds
+     * @param {string} authHeader Full Authorization header
+     * @param {string} maxBody Max body for POST
+     * @returns - Base 64 encoded hmac
+     */
     signRequest(request, timestamp, clientSecret, authHeader, maxBody) {
         return this.base64HmacSha256(
             this.signData(request, authHeader, maxBody),
@@ -376,18 +388,13 @@ class EdgeGrid {
         );
     }
 
-    canonicalizeHeaders(headers) {
-        const formattedHeaders = [];
-
-        for (let key in headers) {
-            formattedHeaders.push(
-                key.toLowerCase() + ':' + headers[key].trim().replace(/\s+/g, ' ')
-            );
-        }
-
-        return formattedHeaders.join('\t');
-    }
-
+    /**
+     * Sign the data
+     * @param {object} request  Full request object
+     * @param {string} authHeader  String of auth header
+     * @param {string} maxBody  String of max body for POST
+     * @returns - Full data for signature
+     */
     signData(request, authHeader, maxBody) {
         const parsedUrl = new URI(request.url);
         const dataToSign = [
@@ -400,76 +407,113 @@ class EdgeGrid {
             authHeader,
         ];
 
+        // join data by tab and ensure it's a string
         const dataToSignStr = dataToSign.join('\t').toString();
 
         return dataToSignStr;
     }
 
+    /**
+     * Sign the key
+     * @param {string} timestamp  Timestamp for signed req
+     * @param {string} clientSecret  Client secret from creds
+     * @returns - base64 hmac of key
+     */
+    signingKey(timestamp, clientSecret) {
+        const key = this.base64HmacSha256(timestamp, clientSecret);
+        return key;
+    }
+
+    /**
+     * Canonicalize optional headersToSign property
+     * @param {object} headers 
+     * @returns - Formatted string of optional headersToSign property
+     */
+    canonicalizeHeaders(headers) {
+        const formattedHeaders = [];
+
+        // iterate over object and canonicalize split by space
+        for (let key in headers) {
+            formattedHeaders.push(
+                key.toLowerCase() + ':' + headers[key].trim().replace(/\s+/g, ' ')
+            );
+        }
+
+        return formattedHeaders.join('\t');
+    }
+
+
+    /**
+     * Handle any POST data if present
+     * @param {object} request 
+     * @param {string} maxBody 
+     * @returns 
+     */
     contentHash(request, maxBody) {
         let contentHash = '',
             preparedBody = request.body || '';
 
+        // handle body object
         if (typeof preparedBody === 'object') {
-            let postDataNew = '',
-                key;
-
             Logger.log('Body content is type Object, transforming to POST data');
 
-            for (key in preparedBody) {
-                postDataNew +=
-                    key +
-                    '=' +
-                    encodeURIComponent(JSON.stringify(preparedBody[key])) +
-                    '&';
+            let postDataNew = '';
+
+            for (let key in preparedBody) {
+                postDataNew += key + '=' + encodeURIComponent(JSON.stringify(preparedBody[key])) + '&';
             }
 
             // Strip trailing ampersand
             postDataNew = postDataNew.replace(/&+$/, '');
 
             preparedBody = postDataNew;
-            request.body = preparedBody; // Is this required or being used?
+            request.body = preparedBody;
         }
 
-        Logger.log(`Body is ${preparedBody}`);
-        Logger.log('PREPARED BODY LENGTH', preparedBody.length);
+        Logger.log(`Body is ${preparedBody} | Length is ${preparedBody.length}`);
 
+        // handle post sizing
         if (request.method === 'POST' && preparedBody.length > 0) {
             Logger.log(`Signing content: ${preparedBody}`);
 
             // If body data is too large, cut down to max-body size
             if (preparedBody.length > maxBody) {
-                Logger.log(
-                    `Data length (${preparedBody.length}) is larger than maximum ${maxBody}`
-                );
+                Logger.log(`Data length (${preparedBody.length}) is larger than maximum ${maxBody}`);
+
+                // trim body to maxBody
                 preparedBody = preparedBody.substring(0, maxBody);
                 Logger.log(`Body truncated. New value ${preparedBody}`);
             }
 
-            Logger.log(`PREPARED BODY ${preparedBody}`);
 
             contentHash = this.base64Sha256(preparedBody);
-            Logger.log(`Content hash is ${contentHash}`);
+            Logger.log(`Body content hash is ${contentHash}`);
         }
 
         return contentHash;
     }
 
-    signingKey(timestamp, clientSecret) {
-        const key = this.base64HmacSha256(timestamp, clientSecret);
-        return key;
-    }
-
+    /**
+     * Create base64 hmac sha256 sig
+     * @param {string} data  The data to sign
+     * @param {string} key  The key to use
+     * @returns - Base64 encoded signature
+     */
     base64HmacSha256(data, key) {
         const encrypt = Utilities.computeHmacSignature(
             Utilities.MacAlgorithm.HMAC_SHA_256,
             data,
             key
         );
-        const encDigest = Utilities.base64Encode(encrypt);
 
-        return encDigest;
+        return Utilities.base64Encode(encrypt);
     }
 
+    /**
+     * Create base64 digest with sha256 algorithm
+     * @param {string} data  The data to digest
+     * @returns - Base64 encoded digest
+     */
     base64Sha256(data) {
         const shasum = Utilities.computeDigest(
             Utilities.DigestAlgorithm.SHA_256,
@@ -478,9 +522,14 @@ class EdgeGrid {
         return Utilities.base64Encode(shasum);
     }
 
-    send(callback) {
+    /**
+     * Perform the API call with signed auth and payload
+     * @returns - Response body
+     */
+    send() {
         Logger.log(`Request: ${JSON.stringify(this.request)}`);
 
+        // Set UrlFetchApp specific options with our data
         let options = {
             headers: this.request.headers,
             contentType: 'application/json',
@@ -490,8 +539,7 @@ class EdgeGrid {
         };
 
         try {
-            Logger.log(UrlFetchApp.getRequest(this.request.url, options));
-
+            // attempt to make the request
             let response = UrlFetchApp.fetch(this.request.url, options),
                 json = response.getContentText(),
                 data = JSON.parse(json);
@@ -505,7 +553,13 @@ class EdgeGrid {
     }
 }
 
+/**
+ * Create a new instance of our class
+ * @param {object} obj  Our init object, edgerc file for now, soon to support creds via dialog
+ * @returns 
+ */
 function init(obj) {
+    // check to make sure an edgerc file was provided
     if (!obj.file) {
         throw new Error(
             'Neither a filename nor dialog type was specified. The file is typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory. If you would like to support auth via input dialog, please init with type: dialog.'
