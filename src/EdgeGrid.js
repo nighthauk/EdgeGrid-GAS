@@ -300,7 +300,7 @@ class EdgeGrid {
     }
 
     /**
-     * 
+     * Build the full URL with qs's
      * @param {string} host  Host from request obj
      * @param {string} path  Path string from request obj 
      * @param {object} qsObj Query String object when creating auth
@@ -317,7 +317,10 @@ class EdgeGrid {
         }
 
         // check to see if query string existed when initializing, if not make sure ? is included
-        path = !path.includes('?') && qsObj ? `${path}?${queryString}` : path;
+        path = !path.includes('?') && qsObj
+            ? `${path}?${queryString}`
+            : path;
+
         const parsed = new URI(path, host);
 
         return parsed;
