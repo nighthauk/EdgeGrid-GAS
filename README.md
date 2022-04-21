@@ -93,7 +93,7 @@ This is an example of an API call to [List groups in your property](https://deve
 
 Enter request headers as name-value pairs in an object.
 
-> **NOTE:** You don't need to include the `Content-Type` and `Content-Length` headers. The authentication layer adds these values.
+> **NOTE:** You don't need to include the `Content-Type` header. The authentication layer adds these values.
 
 ```javascript
 eggas.auth({
