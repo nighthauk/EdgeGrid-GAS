@@ -47,16 +47,18 @@ let result = ui.alert('Response', res, ui.ButtonSet.OK);
 
 An `.edgerc` file contains sections for each of your API client credentials and is usually hosted in your home directory:
 
+> **NOTE:** Currently this file should be a plain text file. Do not put this into a Google Doc. Changes are needed to accommodate both.
+
 ```plaintext
 [default]
-host = akaa-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.luna.akamaiapis.net/
+host = akaa-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.luna.akamaiapis.net
 client_token = akab-XXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXX
 client_secret = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 access_token = akab-XXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXX
 max-body = 131072
 
 [section-name]
-host = akaa-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.luna.akamaiapis.net/
+host = akaa-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.luna.akamaiapis.net
 client_token = akab-XXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXX
 client_secret = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 access_token = akab-XXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXX
@@ -87,11 +89,9 @@ let res = eggas
     .send();
 ```
 
-This is an example of an API call to [List groups in your property](https://developer.akamai.com/api/core_features/property_manager/v1.html#getgroups). Change the `path` element to reference an endpoint in any of the [Akamai APIs](https://developer.akamai.com/api).
-
 ### Headers
 
-Enter request headers as name-value pairs in an object.
+Enter request headers as name-value pairs in an object. Below is an example of an API call to [List groups in your property](https://developer.akamai.com/api/core_features/property_manager/v1.html#getgroups). Change the `path` element to reference an endpoint in any of the [Akamai APIs](https://developer.akamai.com/api).
 
 > **NOTE:** You don't need to include the `Content-Type` header. The authentication layer adds these values.
 
