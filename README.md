@@ -8,9 +8,7 @@ This library implements an Authentication handler library for the Akamai EdgeGri
 
 `Coming Soon`
 
-## Example
-
-### Credentials
+## Credentials
 
 Before you begin, you need to [Create authentication credentials](https://techdocs.akamai.com/developer/docs/set-up-authentication-credentials) in [Control Center](https://control.akamai.com).
 
@@ -69,6 +67,54 @@ max-body = 131072
 
 Inline authentication is here! This has been on the to-do list for a while, and finally got around to do it. This method of auth brings great capabilities not had before due to the way Google handles permissions. Basically, Google requires some type of user interaction with the UI to grant your appsscript code to control the UI itself, access other internal APIs, etc. For instance, when you authenticate via `.edgerc` file from your Google Drive folder, you must have some user action trigger that, like a context menu or sidebar. Where this gets tricky is, say I want a cell based function to run some API calls at some given cadence. It gets tricky without this method of inline authentication. This is now possible! One example use case is, say I'd like to check 500 hostnames to see if they've been onboarded into a property on Akamai. Now I can make a cell based function, do my inline auth and that cell formula itself can hold the code needed to call PAPI and look for this hostname. Even cooler, I can run that every minute if desired and always have those cells reflect accurate information without having to click a context menu or sidebar. Clear as mud?
 
+There are a few different ways to use inline auth:
+
+1. Right inline, including your edgegrid credentials in your code. It should go without saying this is very insecure and not a recommended approach. Alas, some are lazy and I suspect they may do this, which I cannot stop them from doing.
+2. Using the [Google Properties Service](https://developers.google.com/apps-script/guides/properties). There are 3 different ways to use the properties service. Read the docs linked here to learn. Examples of a few lilsted below.
+
+> **NOTE:** These are just a couple means of doing inline auth. There are probably other means I haven't thought of. Ultimately all this does is allows to send edgegrid credentials in an object, inline with your initialization. Use whatever method best suits your needs from a security and access standpoint.
+
+|                    | Script Properties                                                                                 | User Properties                                       | Document Properties                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
+| Method to access   | `getScriptProperties()`                                                                           | `getUserProperties()`                                 | `getDocumentProperties()`                                         |
+| Data shared among  | All users of a script, add-on, or web app                                                         | The current user of a script, add-on, or web app      | All users of an add-on in the open document                       |
+| Typically used for | App-wide configuration data, like the username and password for the developer's external database | User-specific settings, like metric or imperial units | Document-specific data, like the source URL for an embedded chart |
+
+---
+
+> **Script Properties UI Example:** Within your Appsscript project settings, there is a UI section which allows you to add your credentials into the system via key value pairs in the UI. Very convenient, but be aware that anyone with edit access (not view) can see your credentials. Best option for this is if you have created an automation which only you need to manage the code for, but would like to provide simple view access to everyone else. They can't see these and this method is great.
+
+![Script Properties UI](../../assets/gas-scriptprops.jpg?raw=true)
+
+The inline authentication is nothing fancy, it involves passing an object of all edgegrid credentials, similar to how it would happen if you did file based authentication using your `.edgerc` file. An example of referencing the property service variables and authenticating:
+
+```javascript
+const scriptProperties = PropertiesService.getScriptProperties();
+const eggas = EdgeGridGAS.init(scriptProperties.getProperties());
+
+/**
+The above property service returns an object. So inline auth using your credentials inline (again, not recommended) would be the equivalent of sending the following
+
+const eggas = EdgeGridGAS.init({client_token: 'blah', client_secret: 'blahblah', access_token: 'bobloblaw', host: 'whatever'});
+**/
+
+let res = eggas
+    .auth({
+        path: '/alerts/v2/alert-definitions',
+        method: 'GET',
+        headers: {
+            Accept: 'application/json',
+        },
+    })
+    .send();
+```
+
+---
+
+> **Modal Example:** Below is what some example markup would be to get your credentials into the properties service via modal. You would create a context menu which loads this html, and writes the input into the propoerty service of your choosing. Note the option for ephemeral here. The idea is if you have very strict security measures, you may want to enforce credentials only live in the property service for the time it takes to run your API calls, then programatically delete all once complete. This is on you to code, but entirely doable, albeit very limiting.
+
+![Rendered Modal Example](../assets/gas-modalex.jpg?raw=true)
+
 ```html
 <!DOCTYPE html>
 <html>
@@ -109,7 +155,7 @@ Inline authentication is here! This has been on the to-do list for a while, and 
 </html>
 ```
 
-### Chaining
+## Chaining
 
 You can also chain calls, similar to using the node `akamai-edgegrid` library:
 
@@ -125,7 +171,7 @@ let res = eggas
     .send();
 ```
 
-### Headers
+## Headers
 
 Enter request headers as name-value pairs in an object. Below is an example of an API call to [List groups in your property](https://developer.akamai.com/api/core_features/property_manager/v1.html#getgroups). Change the `path` element to reference an endpoint in any of the [Akamai APIs](https://developer.akamai.com/api).
 
@@ -141,7 +187,7 @@ eggas.auth({
 });
 ```
 
-### Body data
+## Body data
 
 You can provide the request `body` as either an object or as a POST data form string.
 
@@ -157,7 +203,7 @@ eggas.auth({
 });
 ```
 
-### Query string parameters
+## Query string parameters
 
 When entering query parameters use the `qs` property under the `auth` method. Set up the parameters as name-value pairs in a object.
 
