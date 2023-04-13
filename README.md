@@ -65,12 +65,48 @@ access_token = akab-XXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXX
 max-body = 131072
 ```
 
-### Manual authentication
+### Inline authentication
 
-Authenticate via dialog, both persistent and ephemeral for strict security.
+Inline authentication is here! This has been on the to-do list for a while, and finally got around to do it. This method of auth brings great capabilities not had before due to the way Google handles permissions. Basically, Google requires some type of user interaction with the UI to grant your appsscript code to control the UI itself, access other internal APIs, etc. For instance, when you authenticate via `.edgerc` file from your Google Drive folder, you must have some user action trigger that, like a context menu or sidebar. Where this gets tricky is, say I want a cell based function to run some API calls at some given cadence. It gets tricky without this method of inline authentication. This is now possible! One example use case is, say I'd like to check 500 hostnames to see if they've been onboarded into a property on Akamai. Now I can make a cell based function, do my inline auth and that cell formula itself can hold the code needed to call PAPI and look for this hostname. Even cooler, I can run that every minute if desired and always have those cells reflect accurate information without having to click a context menu or sidebar. Clear as mud?
 
-```javascript
-Coming soon...
+```html
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <base target="_top">
+    <div class="sidebar branding-below">
+        <div class="form-group">
+            <p>
+                <label for="client-secret">Client Secret</label>
+                <input type="text" id="client-secret" style="width: 300px;">
+            </p>
+            <p>
+                <label for="eg-host">Host</label>
+                <input type="text" id="eg-host" style="width: 300px;">
+            </p>
+            <p>
+                <label for="access-token">Access Token</label>
+                <input type="text" id="access-token" style="width: 300px;">
+            </p>
+            <p>
+                <label for="client-token">Client Token</label>
+                <input type="text" id="client-token" style="width: 300px;">
+            </p>
+        </div>
+        <div class="block">
+            <input type="checkbox" id="strict-secure">
+            <label for="strict-secure">Prefer ephemeral <i>(limiting, but most secure)</i></label>
+        </div>
+
+        <div class="block">
+            <button class="blue" onclick="google.script.host.close();">Authenticate</button>
+            <button onclick="google.script.host.close();">Cancel</button>
+        </div>
+    </div>
+
+</html>
 ```
 
 ### Chaining

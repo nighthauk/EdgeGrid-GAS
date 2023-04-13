@@ -21,7 +21,6 @@ class EdgeGrid {
      * Called from constructor, builds the details needed for our token
      */
     edgerc() {
-        let ui = SpreadsheetApp.getUi();
 
         // initialized with edgerc file from Google Drive
         if (this.obj.file) {
@@ -46,7 +45,16 @@ class EdgeGrid {
                 this.config = this.buildObj(confData);
             }
         } else {
-            ui.alert(JSON.stringify(this.obj));
+            // initialized with manual auth, destructure credential object and validate the config
+            let { client_token, client_secret, access_token, host } = this.obj;
+
+            // validate config object
+            this.config = this.validatedConfig({
+                client_token: client_token
+                , client_secret: client_secret
+                , access_token: access_token
+                , host: host
+            });
         }
     }
 
@@ -300,7 +308,7 @@ class EdgeGrid {
     }
 
     /**
-     * Build the full URL with qs's
+     * 
      * @param {string} host  Host from request obj
      * @param {string} path  Path string from request obj 
      * @param {object} qsObj Query String object when creating auth
@@ -317,10 +325,7 @@ class EdgeGrid {
         }
 
         // check to see if query string existed when initializing, if not make sure ? is included
-        path = !path.includes('?') && qsObj
-            ? `${path}?${queryString}`
-            : path;
-
+        path = !path.includes('?') && qsObj ? `${path}?${queryString}` : path;
         const parsed = new URI(path, host);
 
         return parsed;
@@ -496,12 +501,6 @@ class EdgeGrid {
         return contentHash;
     }
 
-    /**
-     * Create base64 hmac sha256 sig
-     * @param {string} data  The data to sign
-     * @param {string} key  The key to use
-     * @returns - Base64 encoded signature
-     */
     base64HmacSha256(data, key) {
         const encrypt = Utilities.computeHmacSignature(
             Utilities.MacAlgorithm.HMAC_SHA_256,
@@ -512,11 +511,6 @@ class EdgeGrid {
         return Utilities.base64Encode(encrypt);
     }
 
-    /**
-     * Create base64 digest with sha256 algorithm
-     * @param {string} data  The data to digest
-     * @returns - Base64 encoded digest
-     */
     base64Sha256(data) {
         const shasum = Utilities.computeDigest(
             Utilities.DigestAlgorithm.SHA_256,
@@ -525,14 +519,9 @@ class EdgeGrid {
         return Utilities.base64Encode(shasum);
     }
 
-    /**
-     * Perform the API call with signed auth and payload
-     * @returns - Response body
-     */
-    send() {
+    send(callback) {
         Logger.log(`Request: ${JSON.stringify(this.request)}`);
 
-        // Set UrlFetchApp specific options with our data
         let options = {
             headers: this.request.headers,
             contentType: 'application/json',
@@ -542,7 +531,8 @@ class EdgeGrid {
         };
 
         try {
-            // attempt to make the request
+            Logger.log(UrlFetchApp.getRequest(this.request.url, options));
+
             let response = UrlFetchApp.fetch(this.request.url, options),
                 json = response.getContentText(),
                 data = JSON.parse(json);
@@ -556,16 +546,10 @@ class EdgeGrid {
     }
 }
 
-/**
- * Create a new instance of our class
- * @param {object} obj  Our init object, edgerc file for now, soon to support creds via dialog
- * @returns 
- */
 function init(obj) {
-    // check to make sure an edgerc file was provided
-    if (!obj.file) {
+    if (!obj.file && !(obj.client_token && obj.client_secret && obj.access_token && obj.host)) {
         throw new Error(
-            'Neither a filename nor dialog type was specified. The file is typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory. If you would like to support auth via input dialog, please init with type: dialog.'
+            'Either a filename was not specified, or an object of credentials are missing/incomplete. If using a file thisis typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory.'
         );
     }
 
