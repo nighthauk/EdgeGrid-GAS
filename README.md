@@ -84,7 +84,7 @@ There are a few different ways to use inline auth:
 
 > **Script Properties UI Example:** Within your Appsscript project settings, there is a UI section which allows you to add your credentials into the system via key value pairs in the UI. Very convenient, but be aware that anyone with edit access (not view) can see your credentials. Best option for this is if you have created an automation which only you need to manage the code for, but would like to provide simple view access to everyone else. They can't see these and this method is great.
 
-![Script Properties UI](../../assets/gas-scriptprops.jpg?raw=true)
+![Script Properties UI](../assets/gas-scriptprops.jpg?raw=true)
 
 The inline authentication is nothing fancy, it involves passing an object of all edgegrid credentials, similar to how it would happen if you did file based authentication using your `.edgerc` file. An example of referencing the property service variables and authenticating:
 
