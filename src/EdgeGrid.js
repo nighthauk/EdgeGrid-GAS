@@ -1,6 +1,6 @@
 eval(
     UrlFetchApp.fetch(
-        'https://rawgit.com/medialize/URI.js/gh-pages/src/URI.js'
+        'https://cdn.jsdelivr.net/npm/urijs@1.19.11/src/URI.min.js'
     ).getContentText()
 );
 
