@@ -22,6 +22,9 @@ class EdgeGrid {
      */
     edgerc() {
 
+        // set debug level or default off if none provided
+        const debug = this.obj.debug || false;
+
         // initialized with edgerc file from Google Drive
         if (this.obj.file) {
             const confSection = this.obj.section || 'default';
@@ -43,6 +46,9 @@ class EdgeGrid {
 
                 // build the full config object
                 this.config = this.buildObj(confData);
+
+                // define enhanced debug option
+                this.config.debug = debug;
             }
         } else {
             // initialized with manual auth, destructure credential object and validate the config
@@ -55,6 +61,9 @@ class EdgeGrid {
                 , access_token: access_token
                 , host: host
             });
+
+            // define enhanced debug option
+            this.config.debug = debug;
         }
     }
 
@@ -463,7 +472,7 @@ class EdgeGrid {
 
         // handle body object
         if (typeof preparedBody === 'object') {
-            Logger.log('Body content is type Object, transforming to POST data');
+            this.debugLogger('Body content is type Object, transforming to POST data');
 
             let postDataNew = '';
 
@@ -478,27 +487,38 @@ class EdgeGrid {
             request.body = preparedBody;
         }
 
-        Logger.log(`Body is ${preparedBody} | Length is ${preparedBody.length}`);
+        // Enhanced debug log, if enabled, for inspection
+        this.debugLogger(`Body is ${preparedBody} | Length is ${preparedBody.length}`);
 
         // handle post sizing
         if (request.method === 'POST' && preparedBody.length > 0) {
-            Logger.log(`Signing content: ${preparedBody}`);
+            this.debugLogger(`Signing content: ${preparedBody}`);
 
             // If body data is too large, cut down to max-body size
             if (preparedBody.length > maxBody) {
-                Logger.log(`Data length (${preparedBody.length}) is larger than maximum ${maxBody}`);
+                this.debugLogger(`Data length (${preparedBody.length}) is larger than maximum ${maxBody}`);
 
                 // trim body to maxBody
                 preparedBody = preparedBody.substring(0, maxBody);
-                Logger.log(`Body truncated. New value ${preparedBody}`);
+                this.debugLogger(`Body truncated. New value ${preparedBody}`);
             }
 
 
             contentHash = this.base64Sha256(preparedBody);
-            Logger.log(`Body content hash is ${contentHash}`);
+            this.debugLogger(`Body content hash is ${contentHash}`);
         }
 
         return contentHash;
+    }
+
+    /**
+     * Handle enhanced logging for debug purposes
+     * @param {array} args
+     */
+    debugLogger(...args) {
+        if (this.config.debug) {
+            Logger.log(...args);
+        };
     }
 
     base64HmacSha256(data, key) {
@@ -520,7 +540,7 @@ class EdgeGrid {
     }
 
     send(callback) {
-        Logger.log(`Request: ${JSON.stringify(this.request)}`);
+        this.debugLogger(`Request: ${JSON.stringify(this.request)}`);
 
         let options = {
             headers: this.request.headers,
@@ -531,13 +551,13 @@ class EdgeGrid {
         };
 
         try {
-            Logger.log(UrlFetchApp.getRequest(this.request.url, options));
+            this.debugLogger(UrlFetchApp.getRequest(this.request.url, options));
 
             let response = UrlFetchApp.fetch(this.request.url, options),
                 json = response.getContentText(),
                 data = JSON.parse(json);
 
-            Logger.log(`Response: ${JSON.stringify(data)}`);
+            this.debugLogger(`Response: ${JSON.stringify(data)}`);
             return JSON.stringify(data);
         } catch (e) {
             Logger.log(`Error: ${e}`);
@@ -547,6 +567,9 @@ class EdgeGrid {
 }
 
 function init(obj) {
+    if (!obj) {
+        obj = { file: '.edgerc', section: 'default' }
+    }
     if (!obj.file && !(obj.client_token && obj.client_secret && obj.access_token && obj.host)) {
         throw new Error(
             'Either a filename was not specified, or an object of credentials are missing/incomplete. If using a file thisis typically .edgerc, and for purposes of GAS, it lives in your root Google Drive directory.'
