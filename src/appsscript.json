@@ -1,7 +1,10 @@
 {
-  "timeZone": "America/New_York",
-  "dependencies": {
-  },
+  "timeZone": "America/Chicago",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8"
 }

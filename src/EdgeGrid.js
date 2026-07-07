@@ -564,6 +564,30 @@ class EdgeGrid {
             return JSON.stringify(e);
         }
     }
+
+    /**
+     * Returns the signed request as a plain object compatible with
+     * UrlFetchApp.fetchAll(), for firing many requests concurrently. Call
+     * immediately after auth(). Every auth() call mints a fresh signature (new
+     * nonce + timestamp via generateAuth), so to retry an expired or rate-limited
+     * request, just call auth() again and re-read this. The url is stringified
+     * because fetchAll() array elements require a string url (send() can pass the
+     * URI object directly, but fetchAll() cannot).
+     * @returns {object} { url, method, headers, contentType, [payload], muteHttpExceptions }
+     */
+    getSignedRequest() {
+        const req = {
+            url: this.request.url.toString(),
+            method: this.request.method,
+            headers: this.request.headers,
+            contentType: 'application/json',
+            muteHttpExceptions: true,
+        };
+        if (this.request.body) {
+            req.payload = this.request.body;
+        }
+        return req;
+    }
 }
 
 function init(obj) {
