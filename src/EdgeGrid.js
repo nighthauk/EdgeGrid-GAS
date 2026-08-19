@@ -1,9 +1,3 @@
-eval(
-    UrlFetchApp.fetch(
-        'https://cdn.jsdelivr.net/npm/urijs@1.19.11/src/URI.min.js'
-    ).getContentText()
-);
-
 /**
  * Class to create a new EdgeGrid auth token within GAS
  */
@@ -319,9 +313,9 @@ class EdgeGrid {
     /**
      * 
      * @param {string} host  Host from request obj
-     * @param {string} path  Path string from request obj 
+     * @param {string} path  Path string from request obj
      * @param {object} qsObj Query String object when creating auth
-     * @returns - Built URI with query params
+     * @returns {string} - Built full URL with query params
      */
     makeUrl(host, path, qsObj) {
         let queryString = '';
@@ -335,9 +329,29 @@ class EdgeGrid {
 
         // check to see if query string existed when initializing, if not make sure ? is included
         path = !path.includes('?') && qsObj ? `${path}?${queryString}` : path;
-        const parsed = new URI(path, host);
 
-        return parsed;
+        return host + path;
+    }
+
+    /**
+     * Parses a full URL into the pieces needed for EdgeGrid signing, replacing
+     * the subset of URI.js this library previously depended on.
+     * @param {string} url  Full URL, e.g. https://host.example.com/path?query
+     * @returns {object} - { protocol, hostname, path, query }
+     */
+    parseUrl(url) {
+        const match = url.match(/^([a-zA-Z][a-zA-Z\d+\-.]*):\/\/([^\/?#:]+)(?::\d+)?([^?#]*)(?:\?([^#]*))?/);
+
+        if (!match) {
+            throw new Error(`Unable to parse URL: ${url}`);
+        }
+
+        return {
+            protocol: match[1],
+            hostname: match[2],
+            path: match[3] || '',
+            query: match[4] || '',
+        };
     }
 
     /**
@@ -413,12 +427,12 @@ class EdgeGrid {
      * @returns - Full data for signature
      */
     signData(request, authHeader, maxBody) {
-        const parsedUrl = new URI(request.url);
+        const parsedUrl = this.parseUrl(request.url);
         const dataToSign = [
             request.method.toUpperCase(),
-            parsedUrl.protocol(),
-            parsedUrl.hostname(),
-            parsedUrl.path() + '?' + parsedUrl.query(),
+            parsedUrl.protocol,
+            parsedUrl.hostname,
+            parsedUrl.path + '?' + parsedUrl.query,
             this.canonicalizeHeaders(request.headersToSign),
             this.contentHash(request, maxBody),
             authHeader,
@@ -570,14 +584,12 @@ class EdgeGrid {
      * UrlFetchApp.fetchAll(), for firing many requests concurrently. Call
      * immediately after auth(). Every auth() call mints a fresh signature (new
      * nonce + timestamp via generateAuth), so to retry an expired or rate-limited
-     * request, just call auth() again and re-read this. The url is stringified
-     * because fetchAll() array elements require a string url (send() can pass the
-     * URI object directly, but fetchAll() cannot).
+     * request, just call auth() again and re-read this.
      * @returns {object} { url, method, headers, contentType, [payload], muteHttpExceptions }
      */
     getSignedRequest() {
         const req = {
-            url: this.request.url.toString(),
+            url: this.request.url,
             method: this.request.method,
             headers: this.request.headers,
             contentType: 'application/json',
