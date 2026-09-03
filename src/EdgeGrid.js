@@ -22,28 +22,24 @@ class EdgeGrid {
         // initialized with edgerc file from Google Drive
         if (this.obj.file) {
             const confSection = this.obj.section || 'default';
-            const files = DriveApp.getFilesByName(this.obj.file);
+            const edgerc = this.findOwnedFile(this.obj.file);
 
-            // get file contents, and specifically the section data
-            while (files.hasNext()) {
-                let edgerc = files.next();
-                let raw = edgerc.getBlob().getDataAsString().split('\n');
+            let raw = edgerc.getBlob().getDataAsString().split('\n');
 
-                // get the edgerc section from raw file
-                let confData = this.getSection(raw, confSection);
+            // get the edgerc section from raw file
+            let confData = this.getSection(raw, confSection);
 
-                if (!confData.length) {
-                    throw new Error(
-                        'An error occurred parsing the .edgerc file. You probably specified an invalid section name.'
-                    );
-                }
-
-                // build the full config object
-                this.config = this.buildObj(confData);
-
-                // define enhanced debug option
-                this.config.debug = debug;
+            if (!confData.length) {
+                throw new Error(
+                    'An error occurred parsing the .edgerc file. You probably specified an invalid section name.'
+                );
             }
+
+            // build the full config object
+            this.config = this.buildObj(confData);
+
+            // define enhanced debug option
+            this.config.debug = debug;
         } else {
             // initialized with manual auth, destructure credential object and validate the config
             let { client_token, client_secret, access_token, host } = this.obj;
@@ -59,6 +55,35 @@ class EdgeGrid {
             // define enhanced debug option
             this.config.debug = debug;
         }
+    }
+
+    /**
+     * DriveApp.getFilesByName() matches on filename alone, across every file the
+     * running user can see — including ones shared with them by someone else. A
+     * shared .edgerc with a common name (e.g. ".edgerc") can shadow the caller's
+     * own file, handing them another person's credentials. This narrows the
+     * search to a file the running user actually owns.
+     * @param {string} fileName  Name of the file to search for, e.g. .edgerc
+     * @returns {File} - The owned Drive file
+     */
+    findOwnedFile(fileName) {
+        const files = DriveApp.getFilesByName(fileName);
+        const ownerEmail = Session.getEffectiveUser().getEmail();
+
+        while (files.hasNext()) {
+            const candidate = files.next();
+            const owner = candidate.getOwner();
+
+            if (owner && owner.getEmail() === ownerEmail) {
+                return candidate;
+            }
+        }
+
+        throw new Error(
+            `Could not find a file named "${fileName}" owned by ${ownerEmail}. ` +
+            'A file with that name shared with you by someone else does not count ' +
+            '— make sure your own copy exists in your Drive.'
+        );
     }
 
     /**
